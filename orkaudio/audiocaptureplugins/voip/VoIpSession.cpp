@@ -1186,7 +1186,7 @@ bool VoIpSession::AddRtpPacket(RtpPacketInfoRef& rtpPacket)
 		}
 	}
 
-	if(m_started == false && CONFIG.m_lookBackRecording == false && m_nonLookBackSessionStarted == false && (m_protocol != ProtRawRtp || (DLLCONFIG.m_trackRawRtpSessionInNonLookBackMode == true && m_numIgnoredRtpPackets == DLLCONFIG.m_rtpMinAmountOfPacketsBeforeStart))  )
+	if(CONFIG.m_lookBackRecording == false && m_nonLookBackSessionStarted == false && (m_protocol != ProtRawRtp || (DLLCONFIG.m_trackRawRtpSessionInNonLookBackMode == true && m_numIgnoredRtpPackets == DLLCONFIG.m_rtpMinAmountOfPacketsBeforeStart))  )
 	{
 		Start();
 		ReportMetadata();
@@ -1228,7 +1228,7 @@ bool VoIpSession::AddRtpPacket(RtpPacketInfoRef& rtpPacket)
 		return true;
 	}
 
-	if(m_started == false && CONFIG.m_lookBackRecording == false && m_numRtpPackets == 0)
+	if(CONFIG.m_lookBackRecording == false && m_numRtpPackets == 0)
 	{
 		Start();
 		ReportMetadata();
@@ -1547,7 +1547,7 @@ bool VoIpSession::AddRtpPacket(RtpPacketInfoRef& rtpPacket)
 	{
 		// We've got enough packets to start the session.
 		// For Raw RTP, the high number is to make sure we have a "real" raw RTP session, not a leftover from a SIP/Skinny session
-		if(m_started == false && CONFIG.m_lookBackRecording == true) 
+		if(CONFIG.m_lookBackRecording == true) 
 		{
 			Start();
 			ReportMetadata();
