@@ -531,6 +531,10 @@ void DetectUsefulUdpPacket(EthernetHeaderStruct* ethernetHeader, IpHeaderStruct*
 		if(!detectedUsefulPacket) {
 			detectedUsefulPacket = TrySipBye(ethernetHeader, ipHeader, udpHeader, udpPayload, ipPacketEnd);
 		}
+		
+		if(!detectedUsefulPacket) {
+			detectedUsefulPacket = TrySipCancel(ethernetHeader, ipHeader, udpHeader, udpPayload, ipPacketEnd);
+		}
 
 		if(!detectedUsefulPacket) {
 			detectedUsefulPacket = TrySipRefer(ethernetHeader, ipHeader, udpHeader, udpPayload, ipPacketEnd);

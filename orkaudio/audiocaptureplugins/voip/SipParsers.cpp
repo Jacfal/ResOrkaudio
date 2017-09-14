@@ -144,6 +144,135 @@ bool TrySipBye(EthernetHeaderStruct* ethernetHeader, IpHeaderStruct* ipHeader, U
 	return result;
 }
 
+/*
+ * added by JPR
+ * Try if incomming message is type of CANCEL
+ */
+bool TrySipCancel(EthernetHeaderStruct* ethernetHeader, IpHeaderStruct* ipHeader, UdpHeaderStruct* udpHeader, u_char* udpPayload, u_char* packetEnd)
+{
+	bool result = false;
+
+	int sipLength = ntohs(udpHeader->len) - sizeof(UdpHeaderStruct);
+	char* sipEnd = (char*)udpPayload + sipLength;
+	if(sipLength < (int)sizeof(SIP_METHOD_CANCEL) || sipEnd > (char*)packetEnd)
+	{
+		return false;
+	}
+
+	if (memcmp(SIP_METHOD_CANCEL, (void*)udpPayload, SIP_METHOD_CANCEL_SIZE) == 0)
+	{
+		result = true;
+		
+		// JPR - using SipByeInfo because gathering same information from both SIP messages
+		SipByeInfoRef info(new SipByeInfo());
+
+		char* fromField = memFindAfter("From:", (char*)udpPayload, sipEnd);
+		if(!fromField)
+		{
+			fromField = memFindAfter("\nf:", (char*)udpPayload, sipEnd);
+		}
+		char* toField = memFindAfter("To:", (char*)udpPayload, sipEnd);
+		if(!toField)
+		{
+			toField = memFindAfter("\nt:", (char*)udpPayload, sipEnd);
+		}
+
+		char* callIdField = memFindAfter("Call-ID:", (char*)udpPayload, sipEnd);
+		if(!callIdField)
+		{
+			callIdField = memFindAfter("\ni:", (char*)udpPayload, sipEnd);
+		}
+		if(callIdField)
+		{
+			GrabTokenSkipLeadingWhitespaces(callIdField, sipEnd, info->m_callId);
+		}
+
+		if(fromField)
+		{
+			if(s_sipExtractionLog->isDebugEnabled())
+			{
+				CStdString from;
+				GrabLine(fromField, sipEnd, from);
+				LOG4CXX_DEBUG(s_sipExtractionLog, "from: " + from);
+			}
+
+			char* fromFieldEnd = memFindEOL(fromField, sipEnd);
+
+			GrabSipName(fromField, fromFieldEnd, info->m_fromName);
+
+			char* sipUser = memFindAfter("sip:", fromField, fromFieldEnd);
+			if(sipUser)
+			{
+				if(DLLCONFIG.m_sipReportFullAddress)
+				{
+					GrabSipUserAddress(sipUser, fromFieldEnd, info->m_from);
+				}
+				else
+				{
+					GrabSipUriUser(sipUser, fromFieldEnd, info->m_from);
+				}
+				GrabSipUriDomain(sipUser, fromFieldEnd, info->m_fromDomain);
+			}
+			else
+			{
+				if(DLLCONFIG.m_sipReportFullAddress)
+				{
+					GrabSipUserAddress(fromField, fromFieldEnd, info->m_from);
+				}
+				else
+				{
+					GrabSipUriUser(fromField, fromFieldEnd, info->m_from);
+				}
+				GrabSipUriDomain(fromField, fromFieldEnd, info->m_fromDomain);
+			}
+		}
+		if(toField)
+		{
+			CStdString to;
+			char* toFieldEnd = GrabLine(toField, sipEnd, to);
+			LOG4CXX_DEBUG(s_sipExtractionLog, "to: " + to);
+
+			GrabSipName(toField, toFieldEnd, info->m_toName);
+
+			char* sipUser = memFindAfter("sip:", toField, toFieldEnd);
+			if(sipUser)
+			{
+				if(DLLCONFIG.m_sipReportFullAddress)
+				{
+					GrabSipUserAddress(sipUser, toFieldEnd, info->m_to);
+				}
+				else
+				{
+					GrabSipUriUser(sipUser, toFieldEnd, info->m_to);
+				}
+				GrabSipUriDomain(sipUser, toFieldEnd, info->m_toDomain);
+			}
+			else
+			{
+				if(DLLCONFIG.m_sipReportFullAddress)
+				{
+					GrabSipUserAddress(toField, toFieldEnd, info->m_to);
+				}
+				else
+				{
+					GrabSipUriUser(toField, toFieldEnd, info->m_to);
+				}
+				GrabSipUriDomain(toField, toFieldEnd, info->m_toDomain);
+			}
+		}
+
+		info->m_senderIp = ipHeader->ip_src;
+		info->m_receiverIp = ipHeader->ip_dest;
+
+		CStdString logMsg;
+		info->ToString(logMsg);
+		LOG4CXX_INFO(s_sipPacketLog, "CANCEL: " + logMsg);
+		
+		VoIpSessionsSingleton::instance()->ReportSipCancel(info);
+	}
+	return result;
+}
+
 bool TrySipNotify(EthernetHeaderStruct* ethernetHeader, IpHeaderStruct* ipHeader, UdpHeaderStruct* udpHeader, u_char* udpPayload, u_char* packetEnd)
 {
 	int sipLength = ntohs(udpHeader->len) - sizeof(UdpHeaderStruct);
@@ -370,6 +499,11 @@ bool ParseSipMessage(EthernetHeaderStruct* ethernetHeader, IpHeaderStruct* ipHea
 		if(!usefulPacket)
 		{
 				usefulPacket = TrySipBye(ethernetHeader, ipHeader, &udpHeader, payload, packetEnd);
+		}
+		
+		if(!usefulPacket)
+		{
+				usefulPacket = TrySipCancel(ethernetHeader, ipHeader, &udpHeader, payload, packetEnd);
 		}
 
 		if(!usefulPacket)
@@ -1076,7 +1210,7 @@ bool TrySipSubscribe(EthernetHeaderStruct* ethernetHeader, IpHeaderStruct* ipHea
 
 }
 bool TrySipInvite(EthernetHeaderStruct* ethernetHeader, IpHeaderStruct* ipHeader, UdpHeaderStruct* udpHeader, u_char* udpPayload, u_char* packetEnd)
-{
+{  
 	CStdString logMsg;
 	bool result = false;
 	bool drop = false;
@@ -1556,6 +1690,20 @@ bool TrySipInvite(EthernetHeaderStruct* ethernetHeader, IpHeaderStruct* ipHeader
 		else if(drop == false && info->m_fromRtpPort.size() && info->m_from.size() && info->m_to.size() && info->m_callId.size())
 		{
 			VoIpSessionsSingleton::instance()->ReportSipInvite(info);
+		}
+		
+		// ** added by JPR **
+		// Handle and report Sip ACK message
+		// Ack recognition is in body of TrySipInvite method because
+		//	Ack message is part of call setup handshake (which is 
+		//	initiated by INVITE message).  
+		if (sipMethod.Equals(SIP_METHOD_ACK))
+		{	
+			CStdString logMsg;
+			info->ToString(logMsg);
+			LOG4CXX_INFO(s_sipPacketLog, "ACK: " + logMsg);
+			
+			VoIpSessionsSingleton::instance()->ReportSipAck(info);
 		}
 	}
 	return result;

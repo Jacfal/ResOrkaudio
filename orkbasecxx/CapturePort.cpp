@@ -2,7 +2,7 @@
  * Oreka -- A media capture and retrieval platform
  * 
  * Copyright (C) 2005, orecx LLC
- *
+ *3
  * http://www.orecx.com
  *
  * This program is free software, distributed under the terms of
@@ -302,7 +302,7 @@ void CapturePort::AddCaptureEvent(CaptureEventRef eventRef)
 		m_audioTapeRef = audioTapeRef;
 		LOG4CXX_INFO(s_log, "[" + m_audioTapeRef->m_trackingId + "] #" + m_id + " start");
 	}
-
+	
 	if (!audioTapeRef.get())
 	{
 		if(!CONFIG.m_vad && !CONFIG.m_audioSegmentation)
@@ -354,6 +354,10 @@ void CapturePort::AddCaptureEvent(CaptureEventRef eventRef)
 
 			break;
 		}
+		case CaptureEvent::EtCallSetupStart:
+		case CaptureEvent::EtCallSetupComplete:
+		case CaptureEvent::EtCallCancel:
+		case CaptureEvent::EtCallEnd:
 		case CaptureEvent::EtUpdate:
 		{
 			audioTapeRef->AddCaptureEvent(eventRef, true);

@@ -85,9 +85,12 @@ public:
 	void Stop();
 	void Start();
 	bool AddRtpPacket(RtpPacketInfoRef& rtpPacket);
+	void ReportCallSignalizationEvent(CaptureEventRef& captureEvent);
 	void ReportSipNotify(SipNotifyInfoRef& notify);
 	void ReportSipBye(SipByeInfoRef& bye);
+	void ReportSipCancel(SipByeInfoRef& cancel);
 	void ReportSipInvite(SipInviteInfoRef& invite);
+	void ReportSipAck(SipInviteInfoRef& invite);
 	void ReportSipErrorPacket(SipFailureMessageInfoRef& info);
 	void ReportSipInfo(SipInfoRef& info);
 	void ReportSipRefer(SipReferRef& info);
@@ -193,6 +196,7 @@ private:
 	LoggerPtr m_log;
 	bool m_started;
 	bool m_stopped;
+	bool m_callsetupstart;
 	CStdString m_orkUid;
 
 	bool m_hasDuplicateRtp;
@@ -221,6 +225,8 @@ public:
 	VIT void ReportSipInvite(SipInviteInfoRef& invite);
 	VIT void ReportSipNotify(SipNotifyInfoRef& notify);
 	VIT void ReportSipBye(SipByeInfoRef& bye);
+	void ReportSipCancel(SipByeInfoRef& bye);
+	void ReportSipAck(SipInviteInfoRef& ack);
 	void ReportSipSubscribe(SipSubscribeInfoRef& subscribe);
 	void ReportSkinnyCallInfo(SkCallInfoStruct*, IpHeaderStruct* ipHeader, TcpHeaderStruct* tcpHeader);
 	void ReportSkinnyCallStateMessage(SkCallStateMessageStruct*, IpHeaderStruct* ipHeader, TcpHeaderStruct* tcpHeader);

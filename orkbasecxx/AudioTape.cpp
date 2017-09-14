@@ -551,6 +551,15 @@ void AudioTape::AddCaptureEvent(CaptureEventRef eventRef, bool send)
 		}
 
 		break;
+	case CaptureEvent::EtCallSetupStart:
+		m_trackingId = eventRef->m_value;
+	case CaptureEvent::EtCallSetupComplete:
+		break;
+	case CaptureEvent::EtCallCancel:
+		break;
+	case CaptureEvent::EtCallEnd:
+		break;
+	
 	}
 
 	{
@@ -665,6 +674,22 @@ void AudioTape::GetMessage(MessageRef& msgRef)
 			}
 		}
 #endif
+	}
+	else if (captureEventRef->m_type == CaptureEvent::EtCallSetupStart)
+	{
+		PopulateTapeMessage(pTapeMsg, captureEventRef->m_type);
+	}
+	else if (captureEventRef->m_type == CaptureEvent::EtCallSetupComplete)
+	{
+		PopulateTapeMessage(pTapeMsg, captureEventRef->m_type);
+	}
+	else if (captureEventRef->m_type == CaptureEvent::EtCallCancel)
+	{
+		PopulateTapeMessage(pTapeMsg, captureEventRef->m_type);
+	}
+	else if (captureEventRef->m_type == CaptureEvent::EtCallEnd)
+	{
+		PopulateTapeMessage(pTapeMsg, captureEventRef->m_type);
 	}
 	else
 	{

@@ -58,7 +58,7 @@
 #define TRACKER_HOSTNAME_PARAM "TrackerHostname"
 #define TRACKER_HOSTNAME_DEFAULT "localhost"
 #define TRACKER_TCP_PORT_PARAM "TrackerTcpPort"
-#define TRACKER_TCP_PORT_DEFAULT 8080
+#define TRACKER_TCP_PORT_DEFAULT 5814	// JPR: changed to 5814 (default res-tapecenter port)
 #define TRACKER_SERVICENAME_PARAM "TrackerServicename"
 #define TRACKER_SERVICENAME_DEFAULT "orktrack"
 #define SERVICE_NAME_PARAM "ServiceName"

@@ -189,6 +189,10 @@ public:
 #define ET_INVALID "invalid"
 #define ET_LOCALSIDE "localside"
 #define ET_AUDIOKEEPDIRECTION "audiokeepdirection"
+#define ET_CALLSETUPCOMPLETE "callsetupcomplete"
+#define ET_CALLSETUPSTART "callsetupstart"
+#define ET_CALLCANCEL "callcancel"
+#define ET_CALLEND "callend"
 	typedef enum
 	{
 		EtUnknown = 0,
@@ -210,7 +214,11 @@ public:
 		EtCallId = 16,
                 EtLocalSide = 17,
                 EtAudioKeepDirection = 18,
-		EtInvalid = 19
+		EtInvalid = 19,
+		EtCallSetupComplete = 20,
+		EtCallSetupStart = 21,
+		EtCallCancel = 22,
+		EtCallEnd = 23,
 	} EventTypeEnum;
 	static CStdString EventTypeToString(int eventTypeEnum);
 	static int EventTypeToEnum(CStdString&);

@@ -455,6 +455,14 @@ CStdString CaptureEvent::EventTypeToString(int eventTypeEnum)
 		return ET_LOCALSIDE;
 	case	EtAudioKeepDirection:
 		return ET_AUDIOKEEPDIRECTION;
+	case	EtCallSetupComplete:
+		return ET_CALLSETUPCOMPLETE;
+	case	EtCallSetupStart:
+		return ET_CALLSETUPSTART;
+	case	EtCallCancel:
+		return ET_CALLCANCEL;
+	case	EtCallEnd:
+		return ET_CALLEND;
 	}
 	return ET_INVALID;
 }
@@ -533,6 +541,22 @@ int CaptureEvent::EventTypeToEnum(CStdString& eventTypeString)
 	else if (eventTypeString.CompareNoCase(ET_AUDIOKEEPDIRECTION) == 0)
 	{
 		eventTypeEnum = EtAudioKeepDirection;
+	}
+	else if (eventTypeString.CompareNoCase(ET_CALLSETUPCOMPLETE) == 0)
+	{
+		eventTypeEnum = EtCallSetupComplete;
+	}
+	else if (eventTypeString.CompareNoCase(ET_CALLSETUPSTART) == 0)
+	{
+		eventTypeEnum = EtCallSetupStart;
+	}
+	else if (eventTypeString.CompareNoCase(ET_CALLCANCEL) == 0)
+	{
+		eventTypeEnum = EtCallCancel;
+	}
+	else if (eventTypeString.CompareNoCase(ET_CALLEND) == 0)
+	{
+		eventTypeEnum = EtCallEnd;
 	}
 	return eventTypeEnum;
 }

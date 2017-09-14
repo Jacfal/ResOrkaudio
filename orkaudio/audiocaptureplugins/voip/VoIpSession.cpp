@@ -86,6 +86,7 @@ VoIpSession::VoIpSession(CStdString& trackingId)
 	m_ssrcCandidate = -1;
 	m_mappedS1S2 =  false;
 	m_orekaRtpPayloadType = 0;
+	m_callsetupstart = false;
 }
 
 void VoIpSession::Stop()
@@ -1061,6 +1062,24 @@ void VoIpSession::ReportDtmfDigit(int channel, CStdString digitValue,  unsigned 
 	g_captureEventCallBack(event, m_capturePort);
 }
 
+/**
+ * Added by JPR.
+ * Report signalization event event to tracker. 
+ */
+void VoIpSession::ReportCallSignalizationEvent(CaptureEventRef& captureEvent)
+{
+	CStdString logMsg;
+	CStdString eventMsg;
+	
+	eventMsg = CaptureEvent::EventTypeToString(captureEvent->m_type);
+	
+	logMsg.Format("[%s] New signalling event %s.", m_capturePort, eventMsg);
+	LOG4CXX_INFO(m_log, logMsg);
+  
+	captureEvent->m_value = m_trackingId;
+	g_captureEventCallBack(captureEvent, m_capturePort);
+}
+
 void VoIpSession::GoOnHold(time_t onHoldTime)
 {
 	if(m_started != true)
@@ -1167,7 +1186,7 @@ bool VoIpSession::AddRtpPacket(RtpPacketInfoRef& rtpPacket)
 		}
 	}
 
-	if(CONFIG.m_lookBackRecording == false && m_nonLookBackSessionStarted == false && (m_protocol != ProtRawRtp || (DLLCONFIG.m_trackRawRtpSessionInNonLookBackMode == true && m_numIgnoredRtpPackets == DLLCONFIG.m_rtpMinAmountOfPacketsBeforeStart))  )
+	if(m_started == false && CONFIG.m_lookBackRecording == false && m_nonLookBackSessionStarted == false && (m_protocol != ProtRawRtp || (DLLCONFIG.m_trackRawRtpSessionInNonLookBackMode == true && m_numIgnoredRtpPackets == DLLCONFIG.m_rtpMinAmountOfPacketsBeforeStart))  )
 	{
 		Start();
 		ReportMetadata();
@@ -1209,7 +1228,7 @@ bool VoIpSession::AddRtpPacket(RtpPacketInfoRef& rtpPacket)
 		return true;
 	}
 
-	if(CONFIG.m_lookBackRecording == false && m_numRtpPackets == 0)
+	if(m_started == false && CONFIG.m_lookBackRecording == false && m_numRtpPackets == 0)
 	{
 		Start();
 		ReportMetadata();
@@ -1528,7 +1547,7 @@ bool VoIpSession::AddRtpPacket(RtpPacketInfoRef& rtpPacket)
 	{
 		// We've got enough packets to start the session.
 		// For Raw RTP, the high number is to make sure we have a "real" raw RTP session, not a leftover from a SIP/Skinny session
-		if(CONFIG.m_lookBackRecording == true) 
+		if(m_started == false && CONFIG.m_lookBackRecording == true) 
 		{
 			Start();
 			ReportMetadata();
@@ -1637,9 +1656,46 @@ void VoIpSession::ReportSipBye(SipByeInfoRef& bye)
 		{
 			logMsg.Format("[%s] dahdiIntercept: ignoring BYE:%s", m_trackingId, byeString);
 		}
-
+		
 		LOG4CXX_INFO(m_log, logMsg);
 	}
+	
+	// finally report sig event to tracker
+	logMsg.Format("[%s] Reporting call bye event.", m_trackingId);
+	LOG4CXX_INFO(m_log, logMsg);
+	
+	CaptureEventRef event(new CaptureEvent);
+	event->m_type = CaptureEvent::EtCallEnd;
+	g_captureEventCallBack(event, m_capturePort);
+}
+
+/*
+ * Report SIP CANCEL message.
+ */
+void VoIpSession::ReportSipCancel(SipByeInfoRef& cancel)
+{
+	CStdString logMsg;
+	logMsg.Format("[%s] Reporting call cancel event.", m_trackingId);
+	LOG4CXX_INFO(m_log, logMsg);
+	
+      	CaptureEventRef event(new CaptureEvent);
+	event->m_type = CaptureEvent::EtCallCancel;
+	g_captureEventCallBack(event, m_capturePort);
+}
+
+/*
+ * Report SIP ACK message.
+ */
+void VoIpSession::ReportSipAck(SipInviteInfoRef& invite)
+{
+	// call setup is complete when ACK message is recognized
+	CStdString logMsg;
+	logMsg.Format("[%s] Reporting call setup complete event.", m_trackingId);
+	LOG4CXX_INFO(m_log, logMsg);
+	
+	CaptureEventRef event(new CaptureEvent);
+	event->m_type = CaptureEvent::EtCallSetupComplete;
+	g_captureEventCallBack(event, m_capturePort);
 }
 
 
@@ -1675,6 +1731,7 @@ void VoIpSession::ReportSipNotify(SipNotifyInfoRef& notify)
 		}
 	}
 }
+
 
 void VoIpSession::ReportSipInvite(SipInviteInfoRef& invite)
 {
@@ -1763,6 +1820,31 @@ void VoIpSession::ReportSipInvite(SipInviteInfoRef& invite)
 				LOG4CXX_INFO(m_log, "[" + m_trackingId + "] " + DLLCONFIG.m_sipOnDemandFieldName + ":" + value + " triggered recording");
 			}
 		}
+	}
+	
+	// SIP session can be started by incomming RTP stream or by INVITE message
+	// start session when SIP INVITE is recognized and session is not started
+	m_capturePort = m_trackingId;
+	
+	if (m_started == false)
+	{
+	      Start(); 
+	      ReportMetadata();
+	}
+
+	if (m_callsetupstart == false)
+	{
+	    m_callsetupstart = true;
+	    CStdString logMsg;
+	    logMsg.Format("[%s] Reporting call setup start event.", m_trackingId);
+	    LOG4CXX_INFO(m_log, logMsg);
+	    CaptureEventRef event(new CaptureEvent);
+	    
+	    event.reset(new CaptureEvent());
+	    event->m_type = CaptureEvent::EtCallSetupStart;
+	    event->m_value = m_trackingId;
+	    g_captureEventCallBack(event, m_capturePort);
+	  
 	}
 }
 
@@ -2204,6 +2286,40 @@ void VoIpSessions::ReportSipInvite(SipInviteInfoRef& invite)
 	LOG4CXX_INFO(m_log, "[" + trackingId + "] created by INVITE:" + inviteString);
 }
 
+/**
+ * Added by JPR.
+ * This method try report Ack SIP message to valid tracker application.
+ * Reaching this method means that call setup is complete and all participants
+ * 	are connected.
+ */
+void VoIpSessions::ReportSipAck(SipInviteInfoRef& ack)
+{
+	std::map<CStdString, VoIpSessionRef>::iterator pair;
+	CStdString logMsg;
+	VoIpSessionRef session;
+	
+	// trying to find an active session with SIP ACK call Id
+	for (pair = m_byCallId.begin(); pair != m_byCallId.end(); pair++)
+	{
+		CStdString callId = pair->first;
+		
+		if (callId == ack->m_callId)
+		{
+		      session = pair->second;
+		  
+		      logMsg.Format("[%s] Session was found and paired to SIP ACK message with call ID %s.", session->m_trackingId, ack->m_callId);
+		      LOG4CXX_DEBUG(m_log, logMsg);
+		      
+		      session -> ReportSipAck(ack);
+		      
+		      return;
+		}
+	}
+	
+	logMsg.Format("Cannot pair SIP ACK message with appropriate session because session with call ID %s does not exists in recording system.", ack->m_callId);
+	LOG4CXX_WARN(m_log, logMsg);
+}
+
 void VoIpSessions::ReportSipSubscribe(SipSubscribeInfoRef& subscribe)
 {
 	int sipSubscripeMapSize = m_sipSubscribeMap.size();
@@ -2364,13 +2480,45 @@ void VoIpSessions::ReportSipBye(SipByeInfoRef& bye)
 	pair = m_byCallId.find(bye->m_callId);
 
 	if (pair != m_byCallId.end())
-	{
+	{	    
 		// Session found: stop it
 		VoIpSessionRef session = pair->second;
 
 		session->ReportSipBye(bye);
 		Stop(session);
 	}
+}
+
+/*
+ * added by JPR
+ * Report SIP CANCEL message.
+ */
+void VoIpSessions::ReportSipCancel(SipByeInfoRef& cancel)
+{
+	std::map<CStdString, VoIpSessionRef>::iterator pair;
+	CStdString logMsg;
+	VoIpSessionRef session;
+	
+	// trying to find an active session with SIP CANCEL call Id
+	for (pair = m_byCallId.begin(); pair != m_byCallId.end(); pair++)
+	{
+		CStdString callId = pair->first;
+		
+		if (callId == cancel->m_callId)
+		{
+		      session = pair->second;
+		  
+		      logMsg.Format("[%s] Session was found and paired to SIP CANCEL message with call ID %s.", session->m_trackingId, cancel->m_callId);
+		      LOG4CXX_DEBUG(m_log, logMsg);
+		      
+		      session -> ReportSipCancel(cancel);
+		      
+		      return;
+		}
+	}
+	
+	logMsg.Format("Cannot pair SIP CANCEL message with appropriate session because session with call ID %s does not exists in recording system.", cancel->m_callId);
+	LOG4CXX_WARN(m_log, logMsg);
 }
 
 
