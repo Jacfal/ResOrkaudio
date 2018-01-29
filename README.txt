@@ -1,29 +1,9 @@
-=================================================
-Welcome to Oreka, an open media capture and retrieval platform
+This repository is fork of the [OREKA GPL](http://oreka.sourceforge.net/) project.
 
-Copyright (C) 2005, orecx LLC	http://www.orecx.com
+Changes in compare with original OREKA GPL project:
 
-This program is free software, distributed under the terms of
-the GNU General Public License.
-
-The platform currently comprises three services:
-
-* orkaudio:	the audio capture and storage daemon with pluggable capture modules
-		currently comes with modules for VoIP and sound device recording.
-
-* orktrack: logs all activity from one or more orkaudio services to any mainstream database.
-
-* orkweb:	Web based user interface for retrieval. 
-
-To get started:
-
-* This is the source distribution package. I you want to get going fast, get Windows or debian Linux binary packages from the project webpage.
-* Refer to BUILD_C++.txt for building orkaudio and associated capture modules
-* Refer to BUILD_JAVA.txt for building orktrack and orkweb
-
-This package is organized as follows:
-
-* orkbasecxx is the base C++ library
-* orkaudio is the audio capture and storage service with pluggable modules
-* orkbasej is the base java library
-* orkweb is a j2ee tapestry based front-end for media retrieval 
+* new bunch of info messages which are sent to orktrack (i have my own implementation of orktrack which know how to work with this messages)
+    * "callsetupstart" command is sent when INVITE message of certain call is caught on orkaudio
+    * "callsetupcomplete" command is sent when 3-way-handshake end with ACK message
+    * "callcancel" command is sent when 3-way-handshake end with CANCEL message
+    * "callend" command is sent when BYE message of certain call is caught on orkaudio
